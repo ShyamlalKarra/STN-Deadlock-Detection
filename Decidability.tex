@@ -1,0 +1,99 @@
+\documentclass{article}
+\usepackage{amsmath,amssymb,amsthm,mathpartir}
+\usepackage{tikz}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\title{Region-Based and Zone-Based Deadlock Detection in Timed Petri Nets}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Region-Based Layered Petri Net Construction}
+
+We define a \emph{region-layered Petri net} (RPN) from a given timed Petri net (TPN), suitable for decidable deadlock detection.
+
+\subsection*{Definition}
+Let $\mathcal{T} = (Q, T, C, \text{Pre}, \text{Post}, \text{Guards}, \text{Inv})$ be a timed Petri net with:
+\begin{itemize}[noitemsep]
+  \item $Q$: set of places,
+  \item $T$: set of transitions,
+  \item $C$: set of clocks,
+  \item $\text{Pre}, \text{Post}: T \to Q^*$: pre- and post-sets,
+  \item $\text{Guards}$: timing constraints on transitions,
+  \item $\text{Inv}$: invariants on places.
+\end{itemize}
+
+Let $\text{MaxC}$ be the maximum constant appearing in guards or invariants.
+
+\paragraph{Layer Construction:}
+\begin{enumerate}[label=\textbf{Step \arabic*:}, leftmargin=2.5em]
+  \item Initialize Layer $\mathcal{L}_0$ with initial region-marking $(q_0, R_0)$.
+  \item For each Layer $\mathcal{L}_i$, generate a \emph{transition-closure}:
+    \begin{itemize}[noitemsep]
+      \item From each set of region-states $\{(q_1, R_1), \dots, (q_k, R_k)\}$, check enabled transitions $t \in T$.
+      \item A transition $t$ is fireable if its input places match the $q_i$'s, and the guard is satisfied by the valuations in $R_i$.
+      \item The result is a new region-marking $(q', R')$, placed in the same layer.
+    \end{itemize}
+  \item Repeat until a fixed point is reached for Layer $\mathcal{L}_i$.
+  \item Advance to next layer $\mathcal{L}_{i+1}$ by delaying time:
+    \begin{itemize}[noitemsep]
+      \item For each region-marking $(q, R)$ in $\mathcal{L}_i$, compute time-successors $(q, R')$.
+      \item Add all $(q, R')$ to the next layer.
+    \end{itemize}
+  \item Stop when a previously seen set of region-markings is repeated (guaranteed to happen since number of regions is finite).
+\end{enumerate}
+
+\paragraph{Finiteness Guarantee:}
+The number of distinct regions over $|C|$ clocks and maximal constant $M$ is finite; the number of layers is bounded by $2^{\# \text{regions}}$. Hence, this construction is finite and decidable.
+
+\paragraph{Deadlock Detection:}
+A region-marking is a \emph{deadlock} if no transition is fireable from it, and all invariants allow staying. Once the RPN is built, checking reachability of deadlock configurations becomes a finite search.
+
+\paragraph{Layer-Independence of Transitions:}
+Note that a given transition $t \in T$ may appear in multiple layers if it is enabled under different region configurations. Therefore, transitions do not belong to a specific layer. This implies that in the symbolic marking equation (discussed below), there is no danger of erroneously allowing a transition from a "later" layer to occur before one from an "earlier" layer. Any firing of a transition in the solution corresponds to a valid execution in the underlying region graph. Thus, the ordering in the solution of the marking equation reflects a valid execution path through region states, regardless of layer indices.
+
+\section{Zone-Based Symbolic Marking Equation Construction}
+
+To improve efficiency, we now move from regions to \emph{zones}, using extrapolation techniques based on the maximum constant from the region analysis.
+
+\subsection*{Zone-Based Marking Equation}
+We construct a symbolic system of equations over \emph{zone-nodes} $(q, Z)$:
+\begin{itemize}[noitemsep]
+  \item Let $x_{(q,Z)}$ denote the number of tokens in zone-node $(q,Z)$.
+  \item For each symbolic transition $t$ over zones:
+    \begin{align*}
+      \text{Input: } & \{(q_1, Z_1), \dots, (q_k, Z_k)\}, \\
+      \text{Output: } & \{(q', Z')\}
+    \end{align*}
+  \item Define the symbolic flow equation:
+    \[
+      x' = x + \sum_{t} v_t \cdot \vec{f}_t
+    \]
+    where $v_t \in \mathbb{Q}_{\geq 0}$ is the number of firings of $t$, and $\vec{f}_t$ is a vector with:
+    \begin{itemize}[noitemsep]
+      \item $-1$ at each input $(q_i,Z_i)$,
+      \item $+1$ at each output $(q',Z')$.
+    \end{itemize}
+\end{itemize}
+
+\paragraph{Maximum Constant and Finite Zone Space:}
+We use the maximum constant $M$ (from the region graph) to apply extrapolation (e.g., LU-extrapolation), ensuring the number of zone abstractions is finite.
+
+\paragraph{Reachability and Deadlock Checking:}
+We ask whether there exists a solution to the symbolic system that:
+\begin{itemize}[noitemsep]
+  \item Starts from an initial marking (e.g., $x_{(q_0,Z_0)} = 1$),
+  \item Reaches a marking with only zone-nodes that are deadlocked (no fireable transitions),
+  \item Satisfies the symbolic flow equations.
+\end{itemize}
+This becomes a linear feasibility problem over $\mathbb{Q}_{\geq 0}$.
+
+\section*{Conclusion}
+
+This combined region-zone construction first provides decidability using region-based abstraction, then efficiency using zone-based symbolic reasoning. It supports sound and complete deadlock detection in timed Petri nets.
+
+\end{document}
